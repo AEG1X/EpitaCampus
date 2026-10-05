@@ -1,9 +1,14 @@
-   :80 {
-       handle /api/* {
-           reverse_proxy backend:8000
-       }
-       handle {
-           root * /srv
-           file_server
-       }
-   }
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv
+		# Application monopage : toute route inconnue renvoie index.html
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,234 @@
+:root {
+	--bg: #f6f7f9;
+	--surface: #ffffff;
+	--surface-2: #eef0f4;
+	--border: #dfe2e8;
+	--text: #1a1d23;
+	--muted: #646b78;
+	--accent: #2f6fed;
+	--accent-text: #ffffff;
+	--danger: #d23c3c;
+	--success: #1f9d55;
+	--warning: #c27c0e;
+	--exam: #d23c3c;
+	--course: #2f6fed;
+	--other: #7a5af5;
+	--radius: 10px;
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0f1115;
+		--surface: #171a21;
+		--surface-2: #1f232c;
+		--border: #2b303b;
+		--text: #e8eaee;
+		--muted: #9aa1ad;
+		--accent: #5b8cff;
+		--danger: #ff6b6b;
+		--success: #3ecf7a;
+		--warning: #f0b030;
+		--exam: #ff6b6b;
+		--course: #5b8cff;
+		--other: #a08bff;
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		sans-serif;
+	font-size: 15px;
+	line-height: 1.5;
+}
+
+h1 {
+	font-size: 1.6rem;
+	margin: 0 0 1rem;
+}
+
+h2 {
+	font-size: 1.1rem;
+	margin: 0 0 0.75rem;
+}
+
+a {
+	color: var(--accent);
+}
+
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 1rem 1.25rem;
+}
+
+.grid {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.row {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.muted {
+	color: var(--muted);
+}
+
+.small {
+	font-size: 0.85rem;
+}
+
+.error {
+	color: var(--danger);
+}
+
+input,
+select,
+textarea,
+button {
+	font: inherit;
+	color: inherit;
+}
+
+input,
+select,
+textarea {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 0.45rem 0.65rem;
+	min-width: 0;
+}
+
+textarea {
+	width: 100%;
+	resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 2px solid var(--accent);
+	outline-offset: -1px;
+}
+
+button,
+.button {
+	background: var(--accent);
+	color: var(--accent-text);
+	border: 0;
+	border-radius: 8px;
+	padding: 0.45rem 0.9rem;
+	cursor: pointer;
+	text-decoration: none;
+	display: inline-block;
+}
+
+button.secondary,
+.button.secondary {
+	background: var(--surface-2);
+	color: var(--text);
+}
+
+button.danger {
+	background: transparent;
+	color: var(--danger);
+	padding: 0.2rem 0.4rem;
+}
+
+button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th,
+td {
+	text-align: left;
+	padding: 0.45rem 0.5rem;
+	border-bottom: 1px solid var(--border);
+}
+
+th {
+	font-size: 0.8rem;
+	color: var(--muted);
+	font-weight: 600;
+}
+
+.badge {
+	display: inline-block;
+	font-size: 0.75rem;
+	padding: 0.05rem 0.5rem;
+	border-radius: 999px;
+	background: var(--surface-2);
+	color: var(--muted);
+}
+
+.badge.exam {
+	background: color-mix(in srgb, var(--exam) 18%, transparent);
+	color: var(--exam);
+}
+
+.badge.course {
+	background: color-mix(in srgb, var(--course) 18%, transparent);
+	color: var(--course);
+}
+
+.badge.other {
+	background: color-mix(in srgb, var(--other) 18%, transparent);
+	color: var(--other);
+}
+
+.list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.list li {
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--border);
+}
+
+.list li:last-child {
+	border-bottom: 0;
+}
+
+.table-wrap {
+	overflow-x: auto;
+}
