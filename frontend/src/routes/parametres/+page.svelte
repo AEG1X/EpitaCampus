@@ -44,6 +44,14 @@
 		`${moodleForm.base_url.replace(/\/$/, '')}/admin/tool/mobile/launch.php?service=moodle_mobile_app&passport=${Math.floor(Math.random() * 1e9)}&urlscheme=moodlemobile`
 	);
 
+	let copied = $state(false);
+
+	async function copyLaunch() {
+		await navigator.clipboard.writeText(launchUrl);
+		copied = true;
+		setTimeout(() => (copied = false), 3000);
+	}
+
 	async function loadMoodle() {
 		moodle = await api('/moodle');
 		// Pendant une synchro, on rafraîchit l'état toutes les 3 secondes.
@@ -204,19 +212,24 @@
 		{:else if moodle}
 			<ol class="small muted steps">
 				<li>
-					Ouvre l'inspecteur de ton navigateur (Cmd+Option+I), onglet <strong>Réseau</strong>, et
-					coche « Conserver le journal ».
+					<button type="button" class="secondary copy" onclick={copyLaunch}>
+						{copied ? 'Lien copié ✓' : 'Copier le lien de connexion Moodle'}
+					</button>
+				</li>
+				<li>Ouvre un <strong>nouvel onglet vide</strong> (Cmd+T).</li>
+				<li>
+					Dans cet onglet vide, ouvre l'inspecteur (Cmd+Option+I), onglet <strong>Réseau</strong>,
+					filtre <strong>Tout</strong>.
 				</li>
 				<li>
-					Clique sur
-					<a href={launchUrl} target="_blank" rel="noopener">ce lien de connexion Moodle</a> (connecte-toi
-					avec Forge ID si besoin). La page finit sur une erreur, c'est normal.
+					Clique dans la barre d'adresse, colle le lien (Cmd+V) et appuie sur Entrée. Connecte-toi
+					avec Forge ID si besoin. L'erreur « adresse pas valide » est normale : clique OK.
 				</li>
 				<li>
-					Dans l'onglet Réseau, clique sur la requête <strong>launch.php</strong> et copie l'adresse
-					<code>moodlemobile://token=…</code> qui apparaît dans l'en-tête <strong>Location</strong>.
+					Dans Réseau, clique sur <strong>launch.php</strong> et copie la valeur de
+					<strong>Location</strong> (elle commence par <code>moodlemobile://token=</code>).
 				</li>
-				<li>Colle-la ci-dessous. Elle est vérifiée auprès de Moodle puis stockée chiffrée.</li>
+				<li>Colle-la ci-dessous et clique Connecter. Elle est vérifiée puis stockée chiffrée.</li>
 			</ol>
 			<form class="row" onsubmit={connectMoodle}>
 				<input
@@ -295,6 +308,10 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
+	}
+
+	.copy {
+		margin: 0.2rem 0;
 	}
 
 	.ok-badge {
