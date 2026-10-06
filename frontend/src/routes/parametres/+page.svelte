@@ -40,6 +40,10 @@
 	let moodleError = $state('');
 	let moodleBusy = $state(false);
 
+	const launchUrl = $derived(
+		`${moodleForm.base_url.replace(/\/$/, '')}/admin/tool/mobile/launch.php?service=moodle_mobile_app&passport=${Math.floor(Math.random() * 1e9)}&urlscheme=moodlemobile`
+	);
+
 	async function loadMoodle() {
 		moodle = await api('/moodle');
 		// Pendant une synchro, on rafraîchit l'état toutes les 3 secondes.
@@ -198,11 +202,22 @@
 				<button class="danger" onclick={disconnectMoodle}>Déconnecter</button>
 			</div>
 		{:else if moodle}
-			<p class="small muted">
-				Sur Moodle : ton profil → <strong>Préférences</strong> → <strong>Clés de sécurité</strong>,
-				copie la clé « Moodle mobile web service » et colle-la ici. Elle est vérifiée auprès de
-				Moodle puis stockée chiffrée ; elle n'est jamais réaffichée.
-			</p>
+			<ol class="small muted steps">
+				<li>
+					Ouvre l'inspecteur de ton navigateur (Cmd+Option+I), onglet <strong>Réseau</strong>, et
+					coche « Conserver le journal ».
+				</li>
+				<li>
+					Clique sur
+					<a href={launchUrl} target="_blank" rel="noopener">ce lien de connexion Moodle</a> (connecte-toi
+					avec Forge ID si besoin). La page finit sur une erreur, c'est normal.
+				</li>
+				<li>
+					Dans l'onglet Réseau, clique sur la requête <strong>launch.php</strong> et copie l'adresse
+					<code>moodlemobile://token=…</code> qui apparaît dans l'en-tête <strong>Location</strong>.
+				</li>
+				<li>Colle-la ci-dessous. Elle est vérifiée auprès de Moodle puis stockée chiffrée.</li>
+			</ol>
 			<form class="row" onsubmit={connectMoodle}>
 				<input
 					bind:value={moodleForm.base_url}
@@ -215,7 +230,7 @@
 					bind:value={moodleForm.token}
 					required
 					minlength="10"
-					placeholder="Clé de sécurité"
+					placeholder="moodlemobile://token=… ou clé"
 					autocomplete="off"
 					class="grow"
 				/>
@@ -272,6 +287,14 @@
 <style>
 	.grow {
 		flex: 1;
+	}
+
+	.steps {
+		margin: 0;
+		padding-left: 1.2rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
 	}
 
 	.ok-badge {

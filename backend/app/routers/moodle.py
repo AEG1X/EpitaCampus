@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -16,7 +17,23 @@ router = APIRouter(prefix="/api/moodle", tags=["moodle"])
 
 class ConnectIn(BaseModel):
     base_url: str = Field(pattern=r"^https://[^/\s]+")
-    token: str = Field(min_length=10, max_length=200)
+    token: str = Field(min_length=10, max_length=2000)
+
+
+def extract_token(raw: str) -> str:
+    """Accepte la clé seule ou l'adresse « moodlemobile://token=… » renvoyée par Moodle."""
+    raw = raw.strip()
+    if "token=" in raw:
+        encoded = raw.split("token=", 1)[1].split("&")[0]
+        try:
+            decoded = base64.b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
+        except (ValueError, UnicodeDecodeError):
+            raise HTTPException(400, "Adresse moodlemobile:// illisible, recopie-la en entier")
+        parts = decoded.split(":::")
+        if len(parts) < 2:
+            raise HTTPException(400, "Adresse moodlemobile:// illisible, recopie-la en entier")
+        return parts[1]
+    return raw
 
 
 class StatusOut(BaseModel):
@@ -68,8 +85,9 @@ def connect(
 ):
     """Vérifie la clé auprès de Moodle, l'enregistre chiffrée et lance une première synchro."""
     base_url = body.base_url.rstrip("/")
+    token = extract_token(body.token)
     try:
-        info = MoodleClient(base_url, body.token.strip()).site_info()
+        info = MoodleClient(base_url, token).site_info()
     except (MoodleError, ValueError) as exc:
         raise HTTPException(400, f"Moodle a refusé la clé : {exc}")
     except Exception:
@@ -77,7 +95,7 @@ def connect(
 
     account = get_account(db, user) or MoodleAccount(user_id=user.id)
     account.base_url = base_url
-    account.token_encrypted = encrypt(body.token.strip())
+    account.token_encrypted = encrypt(token)
     account.moodle_user_id = info["userid"]
     account.site_name = info.get("sitename", "")[:255]
     account.last_error = None
