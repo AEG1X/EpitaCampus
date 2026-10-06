@@ -63,7 +63,12 @@
 	}
 </script>
 
-<h1>Outil JWT</h1>
+<header class="page-head">
+	<div>
+		<h1>Outil JWT</h1>
+		<p>Le token n'est jamais envoyé au serveur : tout est calculé dans ton navigateur.</p>
+	</div>
+</header>
 <p class="muted small">
 	Le token n'est jamais envoyé au serveur : tout est calculé dans ton navigateur.
 </p>

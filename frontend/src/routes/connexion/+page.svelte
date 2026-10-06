@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '#lib/api.js';
 	import { session } from '#lib/session.svelte.js';
+	import Icon from '#lib/components/Icon.svelte';
 
 	let status = $state(null);
 	let mode = $state('login');
@@ -41,7 +42,11 @@
 
 <div class="wrap">
 	<form class="card stack" onsubmit={submit}>
-		<h1>EpitaCampus</h1>
+		<div class="brand">
+			<span class="logo"><Icon name="cap" size={26} /></span>
+			<h1>EpitaCampus</h1>
+			<p class="muted small">Tes cours, ton planning et tes notes au même endroit.</p>
+		</div>
 		{#if status?.first_user}
 			<p class="muted small">Bienvenue ! Crée le premier compte, il sera administrateur.</p>
 		{/if}
@@ -79,9 +84,44 @@
 		display: grid;
 		place-items: center;
 		padding: 1rem;
+		background:
+			radial-gradient(
+				60rem 30rem at 10% -10%,
+				color-mix(in srgb, var(--accent) 22%, transparent),
+				transparent
+			),
+			radial-gradient(
+				50rem 30rem at 110% 110%,
+				color-mix(in srgb, var(--accent-2) 20%, transparent),
+				transparent
+			),
+			var(--bg);
 	}
 
 	form {
-		width: min(380px, 100%);
+		width: min(400px, 100%);
+		padding: 2rem;
+		box-shadow: var(--shadow-lg);
+	}
+
+	.brand {
+		text-align: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.brand p {
+		margin: 0.3rem 0 0;
+	}
+
+	.logo {
+		display: inline-grid;
+		place-items: center;
+		width: 52px;
+		height: 52px;
+		border-radius: 16px;
+		background: var(--gradient);
+		color: white;
+		margin-bottom: 0.75rem;
+		box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 45%, transparent);
 	}
 </style>

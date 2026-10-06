@@ -83,7 +83,12 @@
 	const today = isoDay();
 </script>
 
-<h1>Cours</h1>
+<header class="page-head">
+	<div>
+		<h1>Cours</h1>
+		<p>Tes cours, leurs fichiers et ton planning de révision espacée.</p>
+	</div>
+</header>
 
 <form class="card row" onsubmit={create}>
 	<input placeholder="Matière (ex : Algo)" bind:value={subject} list="subjects" required />

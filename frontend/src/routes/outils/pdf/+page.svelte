@@ -89,8 +89,12 @@
 	const canRun = $derived(mode === 'merge' ? files.length >= 2 : files.length >= 1);
 </script>
 
-<h1>Outils PDF</h1>
-<p class="muted small">Les fichiers restent sur ton appareil : rien n'est envoyé au serveur.</p>
+<header class="page-head">
+	<div>
+		<h1>Outils PDF</h1>
+		<p>Les fichiers restent sur ton appareil : rien n'est envoyé au serveur.</p>
+	</div>
+</header>
 
 <div class="stack">
 	<div class="row">

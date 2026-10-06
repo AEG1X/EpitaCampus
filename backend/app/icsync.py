@@ -1,8 +1,11 @@
 """Synchronisation des calendriers ICS (Zeus, Google Agenda, etc.)."""
 
 import asyncio
+import ipaddress
+import socket
 import logging
 import re
+from urllib.parse import urlparse
 from datetime import date, datetime, time, timezone
 
 import httpx
@@ -53,10 +56,29 @@ def parse_ics(content: bytes) -> list[dict]:
     return events
 
 
+def check_url(url: str) -> None:
+    """Refuse les liens vers le réseau local ou la machine elle-même."""
+    host = urlparse(url).hostname
+    if not host:
+        raise ValueError("Lien invalide")
+    if settings.allow_private_ics:
+        return
+    for info in socket.getaddrinfo(host, None):
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global:
+            raise ValueError("Les liens vers le réseau local ne sont pas autorisés")
+
+
 def sync_source(db: Session, source: CalendarSource) -> int:
     """Remplace les événements de la source par ceux du flux ICS. Renvoie le nombre d'événements."""
     try:
-        resp = httpx.get(source.url, timeout=30, follow_redirects=True)
+        check_url(source.url)
+        resp = httpx.get(source.url, timeout=30, follow_redirects=False)
+        if resp.is_redirect:
+            # On suit au plus une redirection, en revérifiant la destination.
+            target = str(resp.next_request.url)
+            check_url(target)
+            resp = httpx.get(target, timeout=30)
         resp.raise_for_status()
         parsed = parse_ics(resp.content)
     except Exception as exc:  # noqa: BLE001 - on veut garder l'erreur pour l'afficher

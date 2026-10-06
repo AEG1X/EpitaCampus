@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     token_days: int = 30
     cookie_secure: bool = False
     calendar_sync_minutes: int = 30
+    # Autorise les liens ICS vers le réseau local (désactivé pour éviter qu'un utilisateur
+    # se serve du serveur pour sonder le réseau de la maison).
+    allow_private_ics: bool = False
 
 
 settings = Settings()
+
+if not settings.database_url.startswith("sqlite") and (
+    settings.secret_key == "dev-secret-a-changer" or len(settings.secret_key) < 32
+):
+    raise RuntimeError("SECRET_KEY manquante ou trop courte : générer avec `openssl rand -hex 32`")

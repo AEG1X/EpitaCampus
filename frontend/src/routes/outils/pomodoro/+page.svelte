@@ -57,7 +57,12 @@
 	}
 </script>
 
-<h1>Minuteur Pomodoro</h1>
+<header class="page-head">
+	<div>
+		<h1>Minuteur Pomodoro</h1>
+		<p>25 minutes de travail, 5 minutes de pause.</p>
+	</div>
+</header>
 
 <section class="card timer stack">
 	<div class="row center">

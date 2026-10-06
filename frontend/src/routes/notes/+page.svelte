@@ -75,7 +75,12 @@
 	}
 </script>
 
-<h1>Notes</h1>
+<header class="page-head">
+	<div>
+		<h1>Notes</h1>
+		<p>Tes résultats, ta moyenne pondérée et son évolution.</p>
+	</div>
+</header>
 
 <form class="card add" onsubmit={add}>
 	<label>

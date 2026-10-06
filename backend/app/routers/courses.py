@@ -1,4 +1,5 @@
 import uuid
+from pathlib import Path
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -17,6 +18,15 @@ router = APIRouter(prefix="/api/courses", tags=["courses"])
 # Intervalles de révision espacée (en jours) après chaque révision.
 REVIEW_INTERVALS = [1, 3, 7, 14, 30, 60]
 MAX_UPLOAD = 100 * 1024 * 1024
+INLINE_TYPES = {
+    "pdf": "application/pdf",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "txt": "text/plain; charset=utf-8",
+}
 
 
 class CourseIn(BaseModel):
@@ -112,15 +122,21 @@ async def upload_file(
     course_id: int, file: UploadFile, db: Session = Depends(get_db), user: User = Depends(current_user)
 ):
     course = get_course(db, user, course_id)
-    content = await file.read()
-    if len(content) > MAX_UPLOAD:
-        raise HTTPException(413, "Fichier trop gros (100 Mo max)")
-    suffix = "".join(c for c in (file.filename or "").rsplit(".", 1)[-1][:10] if c.isalnum())
+    filename = Path(file.filename or "fichier").name[:255]
+    suffix = "".join(c for c in filename.rsplit(".", 1)[-1][:10] if c.isalnum()).lower()
     stored = f"{uuid.uuid4().hex}.{suffix or 'bin'}"
-    (files_dir() / stored).write_bytes(content)
-    record = CourseFile(
-        course_id=course.id, filename=file.filename or stored, stored_name=stored, size=len(content)
-    )
+    path = files_dir() / stored
+    size = 0
+    # Écriture par morceaux pour ne pas charger 100 Mo en mémoire sur le Pi.
+    with path.open("wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD:
+                out.close()
+                path.unlink(missing_ok=True)
+                raise HTTPException(413, "Fichier trop gros (100 Mo max)")
+            out.write(chunk)
+    record = CourseFile(course_id=course.id, filename=filename, stored_name=stored, size=size)
     db.add(record)
     db.commit()
     return record
@@ -136,8 +152,16 @@ def get_file(db: Session, user: User, file_id: int) -> CourseFile:
 @router.get("/files/{file_id}")
 def download_file(file_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
     record = get_file(db, user, file_id)
+    suffix = record.stored_name.rsplit(".", 1)[-1]
+    # Seuls les PDF et images s'ouvrent dans le navigateur ; le reste est téléchargé, pour
+    # qu'un fichier HTML déposé ne puisse jamais s'exécuter sur le site.
+    media_type = INLINE_TYPES.get(suffix)
     return FileResponse(
-        files_dir() / record.stored_name, filename=record.filename, content_disposition_type="inline"
+        files_dir() / record.stored_name,
+        filename=record.filename,
+        media_type=media_type or "application/octet-stream",
+        content_disposition_type="inline" if media_type else "attachment",
+        headers={"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"},
     )
 
 
