@@ -47,8 +47,13 @@
 	let copied = $state(false);
 
 	async function copyLaunch() {
-		await navigator.clipboard.writeText(launchUrl);
-		copied = true;
+		try {
+			await navigator.clipboard.writeText(launchUrl);
+			copied = true;
+		} catch {
+			// Le presse-papiers n'est pas disponible hors HTTPS : on affiche le lien à copier.
+			prompt('Copie ce lien :', launchUrl);
+		}
 		setTimeout(() => (copied = false), 3000);
 	}
 
