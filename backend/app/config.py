@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     token_days: int = 30
     cookie_secure: bool = False
     calendar_sync_minutes: int = 30
+    moodle_sync_hours: int = 6
     # Autorise les liens ICS vers le réseau local (désactivé pour éviter qu'un utilisateur
     # se serve du serveur pour sonder le réseau de la maison).
     allow_private_ics: bool = False

@@ -8,7 +8,8 @@ from sqlalchemy import inspect, text
 from .config import settings
 from .db import Base, engine
 from .icsync import sync_loop
-from .routers import auth, calendar, courses, dashboard, grades
+from .moodle import sync_loop as moodle_sync_loop
+from .routers import auth, calendar, courses, dashboard, grades, moodle
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,9 +37,13 @@ async def lifespan(app: FastAPI):
     # Création des tables au démarrage (à remplacer par Alembic quand le schéma se stabilisera).
     Base.metadata.create_all(engine)
     add_missing_columns()
-    task = asyncio.create_task(sync_loop())
+    # Une synchro interrompue par un redémarrage ne doit pas rester bloquée.
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE moodle_accounts SET syncing = false"))
+    tasks = [asyncio.create_task(sync_loop()), asyncio.create_task(moodle_sync_loop())]
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 # La documentation de l'API n'est exposée qu'en développement (SQLite).
@@ -51,7 +56,14 @@ app = FastAPI(
     openapi_url="/api/openapi.json" if dev else None,
 )
 
-for router in (auth.router, courses.router, calendar.router, grades.router, dashboard.router):
+for router in (
+    auth.router,
+    courses.router,
+    calendar.router,
+    grades.router,
+    dashboard.router,
+    moodle.router,
+):
     app.include_router(router)
 
 

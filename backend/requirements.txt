@@ -6,3 +6,4 @@ pyjwt
 pwdlib[argon2]
 icalendar
 python-multipart
+cryptography

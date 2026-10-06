@@ -81,6 +81,7 @@
 	}
 
 	const today = isoDay();
+	const isNew = (file) => Date.now() - new Date(file.uploaded_at) < 7 * 86400000;
 </script>
 
 <header class="page-head">
@@ -119,6 +120,8 @@
 				<span class="badge">{course.subject}</span>
 				<strong>{course.title}</strong>
 				<span class="small muted">{course.files.length} fichier(s)</span>
+				{#if course.moodle_course_id}<span class="badge course">Moodle</span>{/if}
+				{#if course.files.some(isNew)}<span class="badge revision">nouveau</span>{/if}
 				{#if course.next_review && course.next_review <= today}
 					<span class="badge exam">à réviser</span>
 				{/if}
@@ -143,7 +146,11 @@
 									<a href="/api/courses/files/{file.id}" target="_blank" rel="noopener">
 										{file.filename}
 									</a>
-									<span class="small muted">{formatSize(file.size)}</span>
+									<span class="small muted">
+										{#if file.section}{file.section} ·
+										{/if}{formatSize(file.size)}
+									</span>
+									{#if isNew(file)}<span class="badge revision">nouveau</span>{/if}
 									<button class="danger" onclick={() => removeFile(file)}>Supprimer</button>
 								</li>
 							{/each}

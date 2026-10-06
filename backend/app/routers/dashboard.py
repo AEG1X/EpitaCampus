@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_user
 from ..db import get_db
-from ..models import Course, Event, Grade, User
+from ..models import Course, CourseFile, Event, Grade, User
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -43,6 +43,14 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(current_user))
         select(Course).where(Course.user_id == user.id).order_by(Course.created_at.desc()).limit(5)
     ).all()
 
+    new_files = db.execute(
+        select(CourseFile, Course)
+        .join(Course)
+        .where(Course.user_id == user.id, CourseFile.uploaded_at >= now - timedelta(days=14))
+        .order_by(CourseFile.uploaded_at.desc())
+        .limit(8)
+    ).all()
+
     grades = db.scalars(select(Grade).where(Grade.user_id == user.id)).all()
     total_coef = sum(g.coefficient for g in grades)
     average = (
@@ -73,6 +81,17 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(current_user))
         ],
         "recent_courses": [
             {"id": c.id, "title": c.title, "subject": c.subject, "created_at": c.created_at} for c in recent_courses
+        ],
+        "new_files": [
+            {
+                "id": f.id,
+                "filename": f.filename,
+                "course_id": c.id,
+                "course": c.title,
+                "subject": c.subject,
+                "uploaded_at": f.uploaded_at,
+            }
+            for f, c in new_files
         ],
         "average": round(average, 2) if average is not None else None,
         "grade_count": len(grades),

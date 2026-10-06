@@ -35,6 +35,48 @@
 		}
 	}
 
+	let moodle = $state(null);
+	let moodleForm = $state({ base_url: 'https://moodle.epita.fr', token: '' });
+	let moodleError = $state('');
+	let moodleBusy = $state(false);
+
+	async function loadMoodle() {
+		moodle = await api('/moodle');
+		// Pendant une synchro, on rafraîchit l'état toutes les 3 secondes.
+		if (moodle.syncing) setTimeout(loadMoodle, 3000);
+	}
+
+	async function connectMoodle(e) {
+		e.preventDefault();
+		moodleBusy = true;
+		moodleError = '';
+		try {
+			moodle = await api('/moodle', { method: 'PUT', body: moodleForm });
+			moodleForm.token = '';
+			setTimeout(loadMoodle, 3000);
+		} catch (err) {
+			moodleError = err.message;
+		} finally {
+			moodleBusy = false;
+		}
+	}
+
+	async function syncMoodle() {
+		moodle = await api('/moodle/sync', { method: 'POST' });
+		setTimeout(loadMoodle, 3000);
+	}
+
+	async function disconnectMoodle() {
+		if (!confirm('Retirer la clé Moodle ? Les cours et fichiers déjà importés sont conservés.'))
+			return;
+		await api('/moodle', { method: 'DELETE' });
+		loadMoodle();
+	}
+
+	$effect(() => {
+		loadMoodle();
+	});
+
 	async function load() {
 		sources = await api('/calendar/sources');
 	}
@@ -133,6 +175,57 @@
 	</section>
 
 	<section class="card stack">
+		<h2><Icon name="book" /> Moodle</h2>
+		{#if moodle?.connected}
+			<div class="row">
+				<span class="badge ok-badge"><Icon name="check" size={12} stroke={3} /> Connecté</span>
+				<strong>{moodle.site_name || moodle.base_url}</strong>
+				<span class="small muted">{moodle.courses} cours · {moodle.files} fichiers importés</span>
+			</div>
+			<p class="small muted">
+				{#if moodle.syncing}
+					Synchronisation en cours… (la première peut prendre quelques minutes)
+				{:else if moodle.last_sync}
+					Dernière synchro : {dateTimeFmt.format(new Date(moodle.last_sync))}. Le site revérifie
+					Moodle toutes les 6 heures.
+				{/if}
+			</p>
+			{#if moodle.last_error}<p class="small error">{moodle.last_error}</p>{/if}
+			<div class="row">
+				<button class="secondary" disabled={moodle.syncing} onclick={syncMoodle}>
+					{moodle.syncing ? 'Synchro en cours…' : 'Synchroniser maintenant'}
+				</button>
+				<button class="danger" onclick={disconnectMoodle}>Déconnecter</button>
+			</div>
+		{:else if moodle}
+			<p class="small muted">
+				Sur Moodle : ton profil → <strong>Préférences</strong> → <strong>Clés de sécurité</strong>,
+				copie la clé « Moodle mobile web service » et colle-la ici. Elle est vérifiée auprès de
+				Moodle puis stockée chiffrée ; elle n'est jamais réaffichée.
+			</p>
+			<form class="row" onsubmit={connectMoodle}>
+				<input
+					bind:value={moodleForm.base_url}
+					required
+					pattern="https://.+"
+					placeholder="https://moodle…"
+				/>
+				<input
+					type="password"
+					bind:value={moodleForm.token}
+					required
+					minlength="10"
+					placeholder="Clé de sécurité"
+					autocomplete="off"
+					class="grow"
+				/>
+				<button disabled={moodleBusy}>{moodleBusy ? 'Vérification…' : 'Connecter'}</button>
+			</form>
+			{#if moodleError}<p class="error small">{moodleError}</p>{/if}
+		{/if}
+	</section>
+
+	<section class="card stack">
 		<h2><Icon name="lock" /> Mot de passe</h2>
 		<p class="small muted">
 			Ton mot de passe est stocké haché avec Argon2 : personne ne peut le relire. Le changer
@@ -179,6 +272,11 @@
 <style>
 	.grow {
 		flex: 1;
+	}
+
+	.ok-badge {
+		background: color-mix(in srgb, var(--success) 15%, transparent);
+		color: var(--success);
 	}
 
 	.pwd {

@@ -39,6 +39,7 @@ class FileOut(BaseModel):
     id: int
     filename: str
     size: int
+    section: str | None = None
     uploaded_at: datetime
 
 
@@ -49,6 +50,7 @@ class CourseOut(BaseModel):
     notes: str
     next_review: date | None
     review_count: int
+    moodle_course_id: int | None = None
     created_at: datetime
     files: list[FileOut]
 

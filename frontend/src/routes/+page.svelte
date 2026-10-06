@@ -188,6 +188,30 @@
 		</section>
 
 		<section class="card">
+			<h2><Icon name="file" /> Nouveaux fichiers</h2>
+			{#if data.new_files.length}
+				<ul class="list">
+					{#each data.new_files as f (f.id)}
+						<li class="row new-file">
+							<a class="grow plain" href="/api/courses/files/{f.id}" target="_blank" rel="noopener">
+								{f.filename}
+								<span class="small muted file-course">{f.course}</span>
+							</a>
+							<span class="small muted">{formatDate(f.uploaded_at)}</span>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<div class="empty">
+					<span class="emoji">📭</span>Rien de nouveau ces 14 derniers jours.
+					<div class="small">
+						<a href="/parametres">Connecte Moodle</a> pour les recevoir automatiquement.
+					</div>
+				</div>
+			{/if}
+		</section>
+
+		<section class="card">
 			<h2><Icon name="book" /> Derniers cours ajoutés</h2>
 			{#if data.recent_courses.length}
 				<ul class="list">
@@ -417,8 +441,22 @@
 		color: white;
 	}
 
-	.review {
+	.review,
+	.new-file {
 		flex-wrap: nowrap;
+	}
+
+	.new-file a {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.file-course {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.plain {
