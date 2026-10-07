@@ -1,4 +1,5 @@
 import base64
+from urllib.parse import parse_qs, urlparse
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_user
 from ..crypto import encrypt
 from ..db import get_db
-from ..moodle import MoodleClient, MoodleError, run_sync
+from ..moodle import MoodleClient, MoodleError, run_sync, token_from_qr
 from ..models import Course, CourseFile, MoodleAccount, User
 
 router = APIRouter(prefix="/api/moodle", tags=["moodle"])
@@ -18,6 +19,20 @@ router = APIRouter(prefix="/api/moodle", tags=["moodle"])
 class ConnectIn(BaseModel):
     base_url: str = Field(pattern=r"^https://[^/\s]+")
     token: str = Field(min_length=10, max_length=2000)
+
+
+class QrIn(BaseModel):
+    qr_text: str = Field(min_length=10, max_length=2000)
+
+
+def parse_qr(text: str) -> tuple[str, str, int]:
+    """Lit « moodlemobile://https://site?qrlogin=CLÉ&userid=ID » : renvoie (site, clé, userid)."""
+    url = text.strip().removeprefix("moodlemobile://")
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    if parsed.scheme != "https" or "qrlogin" not in params or "userid" not in params:
+        raise HTTPException(400, "Ce QR code n'est pas un QR code de connexion Moodle")
+    return f"https://{parsed.netloc}{parsed.path.rstrip('/')}", params["qrlogin"][0], int(params["userid"][0])
 
 
 def extract_token(raw: str) -> str:
@@ -84,8 +99,28 @@ def connect(
     user: User = Depends(current_user),
 ):
     """Vérifie la clé auprès de Moodle, l'enregistre chiffrée et lance une première synchro."""
-    base_url = body.base_url.rstrip("/")
-    token = extract_token(body.token)
+    return save_account(body.base_url.rstrip("/"), extract_token(body.token), background, db, user)
+
+
+@router.put("/qr", response_model=StatusOut)
+def connect_qr(
+    body: QrIn,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    """Connexion avec le QR code « application mobile » affiché sur le profil Moodle."""
+    base_url, key, moodle_user_id = parse_qr(body.qr_text)
+    try:
+        token = token_from_qr(base_url, key, moodle_user_id)
+    except (MoodleError, ValueError) as exc:
+        raise HTTPException(400, f"Moodle a refusé le QR code : {exc}")
+    except Exception:
+        raise HTTPException(400, "Impossible de joindre Moodle")
+    return save_account(base_url, token, background, db, user)
+
+
+def save_account(base_url, token, background, db, user):
     try:
         info = MoodleClient(base_url, token).site_info()
     except (MoodleError, ValueError) as exc:

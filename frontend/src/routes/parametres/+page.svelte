@@ -1,6 +1,7 @@
 <script>
 	import { api } from '#lib/api.js';
 	import Icon from '#lib/components/Icon.svelte';
+	import { readQr } from '#lib/qr.js';
 
 	let sources = $state([]);
 	let name = $state('Zeus');
@@ -43,6 +44,39 @@
 	const launchUrl = $derived(
 		`${moodleForm.base_url.replace(/\/$/, '')}/admin/tool/mobile/launch.php?service=moodle_mobile_app&passport=${Math.floor(Math.random() * 1e9)}&urlscheme=moodlemobile`
 	);
+
+	let qrBusy = $state(false);
+
+	async function connectWithQr(blob) {
+		moodleError = '';
+		qrBusy = true;
+		try {
+			const text = await readQr(blob);
+			if (!text)
+				throw new Error('Aucun QR code trouvé dans cette image, recadre la capture sur le QR code');
+			moodle = await api('/moodle/qr', { method: 'PUT', body: { qr_text: text } });
+			setTimeout(loadMoodle, 3000);
+		} catch (err) {
+			moodleError = err.message;
+		} finally {
+			qrBusy = false;
+		}
+	}
+
+	function onPaste(event) {
+		if (moodle?.connected) return;
+		const item = [...(event.clipboardData?.items ?? [])].find((i) => i.type.startsWith('image/'));
+		if (item) {
+			event.preventDefault();
+			connectWithQr(item.getAsFile());
+		}
+	}
+
+	function onDrop(event) {
+		event.preventDefault();
+		const file = event.dataTransfer?.files?.[0];
+		if (file) connectWithQr(file);
+	}
 
 	let copied = $state(false);
 
@@ -131,6 +165,8 @@
 	}
 </script>
 
+<svelte:window onpaste={onPaste} />
+
 <header class="page-head">
 	<div>
 		<h1>Paramètres</h1>
@@ -217,43 +253,80 @@
 		{:else if moodle}
 			<ol class="small muted steps">
 				<li>
-					<button type="button" class="secondary copy" onclick={copyLaunch}>
-						{copied ? 'Lien copié ✓' : 'Copier le lien de connexion Moodle'}
-					</button>
-				</li>
-				<li>Ouvre un <strong>nouvel onglet vide</strong> (Cmd+T).</li>
-				<li>
-					Dans cet onglet vide, ouvre l'inspecteur (Cmd+Option+I), onglet <strong>Réseau</strong>,
-					filtre <strong>Tout</strong>.
-				</li>
-				<li>
-					Clique dans la barre d'adresse, colle le lien (Cmd+V) et appuie sur Entrée. Connecte-toi
-					avec Forge ID si besoin. L'erreur « adresse pas valide » est normale : clique OK.
+					Ouvre
+					<a
+						href="{moodleForm.base_url.replace(/\/$/, '')}/user/profile.php"
+						target="_blank"
+						rel="noopener"
+					>
+						ton profil Moodle</a
+					>
+					et descends jusqu'à la partie <strong>Application mobile</strong> : un QR code s'affiche.
 				</li>
 				<li>
-					Dans Réseau, clique sur <strong>launch.php</strong> et copie la valeur de
-					<strong>Location</strong> (elle commence par <code>moodlemobile://token=</code>).
+					Fais une capture du QR code avec <strong>Cmd + Ctrl + Maj + 4</strong> (elle va directement
+					dans le presse-papiers).
 				</li>
-				<li>Colle-la ci-dessous et clique Connecter. Elle est vérifiée puis stockée chiffrée.</li>
+				<li>Reviens ici et appuie sur <strong>Cmd + V</strong>. C'est tout.</li>
 			</ol>
-			<form class="row" onsubmit={connectMoodle}>
+			<label
+				class="drop"
+				class:busy={qrBusy}
+				ondragover={(e) => e.preventDefault()}
+				ondrop={onDrop}
+			>
+				{qrBusy ? 'Connexion à Moodle…' : 'Colle (Cmd+V) ou dépose ici la capture du QR code'}
 				<input
-					bind:value={moodleForm.base_url}
-					required
-					pattern="https://.+"
-					placeholder="https://moodle…"
+					type="file"
+					accept="image/*"
+					onchange={(e) => e.currentTarget.files[0] && connectWithQr(e.currentTarget.files[0])}
 				/>
-				<input
-					type="password"
-					bind:value={moodleForm.token}
-					required
-					minlength="10"
-					placeholder="moodlemobile://token=… ou clé"
-					autocomplete="off"
-					class="grow"
-				/>
-				<button disabled={moodleBusy}>{moodleBusy ? 'Vérification…' : 'Connecter'}</button>
-			</form>
+			</label>
+			<p class="small muted">
+				Le QR code expire au bout de 10 minutes et doit être affiché sur le même réseau que ce site.
+			</p>
+			<details class="small">
+				<summary class="muted">Autre méthode (clé manuelle, avancé)</summary>
+				<ol class="small muted steps manual">
+					<li>
+						<button type="button" class="secondary copy" onclick={copyLaunch}>
+							{copied ? 'Lien copié ✓' : 'Copier le lien de connexion Moodle'}
+						</button>
+					</li>
+					<li>Ouvre un <strong>nouvel onglet vide</strong> (Cmd+T).</li>
+					<li>
+						Dans cet onglet vide, ouvre l'inspecteur (Cmd+Option+I), onglet <strong>Réseau</strong>,
+						filtre <strong>Tout</strong>.
+					</li>
+					<li>
+						Clique dans la barre d'adresse, colle le lien (Cmd+V) et appuie sur Entrée. Connecte-toi
+						avec Forge ID si besoin. L'erreur « adresse pas valide » est normale : clique OK.
+					</li>
+					<li>
+						Dans Réseau, clique sur <strong>launch.php</strong> et copie la valeur de
+						<strong>Location</strong> (elle commence par <code>moodlemobile://token=</code>).
+					</li>
+					<li>Colle-la ci-dessous et clique Connecter. Elle est vérifiée puis stockée chiffrée.</li>
+				</ol>
+				<form class="row" onsubmit={connectMoodle}>
+					<input
+						bind:value={moodleForm.base_url}
+						required
+						pattern="https://.+"
+						placeholder="https://moodle…"
+					/>
+					<input
+						type="password"
+						bind:value={moodleForm.token}
+						required
+						minlength="10"
+						placeholder="moodlemobile://token=… ou clé"
+						autocomplete="off"
+						class="grow"
+					/>
+					<button disabled={moodleBusy}>{moodleBusy ? 'Vérification…' : 'Connecter'}</button>
+				</form>
+			</details>
 			{#if moodleError}<p class="error small">{moodleError}</p>{/if}
 		{/if}
 	</section>
@@ -313,6 +386,49 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
+	}
+
+	.drop {
+		position: relative;
+		display: block;
+		text-align: center;
+		padding: 1.5rem 1rem;
+		border: 2px dashed var(--border);
+		border-radius: var(--radius-sm);
+		color: var(--muted);
+		font-size: 0.95rem;
+		cursor: pointer;
+	}
+
+	.drop:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
+	.drop.busy {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
+	.drop input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+
+	details {
+		margin-top: 0.25rem;
+	}
+
+	details[open] {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+
+	summary {
+		cursor: pointer;
 	}
 
 	.copy {

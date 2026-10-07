@@ -62,6 +62,37 @@ class MoodleClient:
         return size
 
 
+def token_from_qr(base_url: str, qr_key: str, moodle_user_id: int) -> str:
+    """Échange la clé du QR code de connexion Moodle contre un jeton (comme l'appli mobile).
+
+    Moodle n'accepte l'échange que depuis la même adresse IP que le navigateur qui a affiché
+    le QR code, dans les 10 minutes.
+    """
+    check_url(base_url)
+    resp = httpx.post(
+        f"{base_url.rstrip('/')}/lib/ajax/service-nologin.php",
+        params={"info": "tool_mobile_get_tokens_for_qr_login"},
+        json=[
+            {
+                "index": 0,
+                "methodname": "tool_mobile_get_tokens_for_qr_login",
+                "args": {"qrloginkey": qr_key, "userid": moodle_user_id},
+            }
+        ],
+        # Moodle réserve cette fonction à l'application mobile.
+        headers={"User-Agent": "MoodleMobile 4.5.0 (EpitaCampus)"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    result = resp.json()[0]
+    if result.get("error"):
+        exc = result.get("exception", {})
+        if exc.get("errorcode") == "ipmismatch":
+            raise MoodleError("le QR code doit être affiché sur le même réseau que le site")
+        raise MoodleError(exc.get("message") or "QR code refusé")
+    return result["data"]["token"]
+
+
 def files_dir():
     path = settings.data_dir / "files"
     path.mkdir(parents=True, exist_ok=True)
